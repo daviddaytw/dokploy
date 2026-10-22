@@ -136,6 +136,37 @@ export const getUpdateData = async (
 	}
 };
 
+// Custom build: track our own GHCR image instead of dokploy/dokploy on Docker Hub.
+export const getCustomUpdateData = async (): Promise<IUpdateData> => {
+	try {
+		const { token } = (await (
+			await fetch(
+				"https://ghcr.io/token?scope=repository:daviddaytw/dokploy:pull",
+			)
+		).json()) as { token: string };
+		const response = await fetch(
+			"https://ghcr.io/v2/daviddaytw/dokploy/manifests/custom",
+			{
+				method: "HEAD",
+				headers: {
+					Accept:
+						"application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json",
+					Authorization: `Bearer ${token}`,
+				},
+			},
+		);
+		const latestDigest = response.headers.get("docker-content-digest");
+		return {
+			latestVersion: "custom",
+			updateAvailable:
+				!!latestDigest && latestDigest !== (await getServiceImageDigest()),
+		};
+	} catch (error) {
+		console.error("Error fetching update data:", error);
+		return DEFAULT_UPDATE_DATA;
+	}
+};
+
 interface TreeDataItem {
 	id: string;
 	name: string;
@@ -295,7 +326,7 @@ export const reloadDockerResource = async (
 				imageTag = currentImageTag;
 			}
 
-			command = `docker service update --force --image dokploy/dokploy:${imageTag} ${resourceName}`;
+			command = `docker service update --force --image ghcr.io/daviddaytw/dokploy:custom ${resourceName}`;
 		} else {
 			command = `docker service update --force ${resourceName}`;
 		}
