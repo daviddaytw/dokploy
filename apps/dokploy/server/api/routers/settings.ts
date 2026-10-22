@@ -14,12 +14,12 @@ import {
 	cleanupVolumes,
 	DEFAULT_UPDATE_DATA,
 	findServerById,
+	getCustomUpdateData,
 	getDockerDiskUsage,
 	getDockerResourceType,
 	getDokployImageTag,
 	getLogCleanupStatus,
 	getTraefikOverview,
-	getUpdateData,
 	getWebServerSettings,
 	IS_CLOUD,
 	parseRawConfig,
@@ -597,7 +597,7 @@ export const settingsRouter = createTRPCRouter({
 			return DEFAULT_UPDATE_DATA;
 		}
 
-		return await getUpdateData(packageInfo.version);
+		return await getCustomUpdateData();
 	}),
 	updateServer: adminProcedure.mutation(async ({ ctx }) => {
 		if (IS_CLOUD) {
@@ -613,14 +613,14 @@ export const settingsRouter = createTRPCRouter({
 			});
 		}
 
-		const data = await getUpdateData(packageInfo.version);
+		const data = await getCustomUpdateData();
 		if (data.updateAvailable) {
 			void spawnAsync("docker", [
 				"service",
 				"update",
 				"--force",
 				"--image",
-				`dokploy/dokploy:${data.latestVersion}`,
+				`ghcr.io/daviddaytw/dokploy:${data.latestVersion}`,
 				"dokploy",
 			]);
 			await audit(ctx, {

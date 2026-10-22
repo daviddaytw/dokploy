@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetDockerResourceType = vi.hoisted(() => vi.fn());
 const mockSpawnAsync = vi.hoisted(() => vi.fn());
-const mockGetUpdateData = vi.hoisted(() => vi.fn());
+const mockGetCustomUpdateData = vi.hoisted(() => vi.fn());
 
 const noop = vi.fn();
 
@@ -25,7 +25,7 @@ vi.mock("@dokploy/server", () => ({
 	getDockerResourceType: mockGetDockerResourceType,
 	getDokployImageTag: () => "canary",
 	getLogCleanupStatus: noop,
-	getUpdateData: mockGetUpdateData,
+	getCustomUpdateData: mockGetCustomUpdateData,
 	getWebServerSettings: noop,
 	IS_CLOUD: false,
 	parseRawConfig: noop,
@@ -107,8 +107,8 @@ describe("settings.updateServer", () => {
 
 	it("fails for a standalone container where docker service update cannot run", async () => {
 		mockGetDockerResourceType.mockResolvedValue("standalone");
-		mockGetUpdateData.mockResolvedValue({
-			latestVersion: "v9.9.9",
+		mockGetCustomUpdateData.mockResolvedValue({
+			latestVersion: "custom",
 			updateAvailable: true,
 		});
 
@@ -122,19 +122,19 @@ describe("settings.updateServer", () => {
 
 	it("does not report a fake success when the update command cannot run", async () => {
 		mockGetDockerResourceType.mockResolvedValue("unknown");
-		mockGetUpdateData.mockResolvedValue({
-			latestVersion: "v9.9.9",
+		mockGetCustomUpdateData.mockResolvedValue({
+			latestVersion: "custom",
 			updateAvailable: true,
 		});
 
 		await expect(caller.updateServer()).rejects.toBeDefined();
-		expect(mockGetUpdateData).not.toHaveBeenCalled();
+		expect(mockGetCustomUpdateData).not.toHaveBeenCalled();
 	});
 
 	it("triggers the docker service update when the service exists", async () => {
 		mockGetDockerResourceType.mockResolvedValue("service");
-		mockGetUpdateData.mockResolvedValue({
-			latestVersion: "v9.9.9",
+		mockGetCustomUpdateData.mockResolvedValue({
+			latestVersion: "custom",
 			updateAvailable: true,
 		});
 		mockSpawnAsync.mockResolvedValue({ stdout: "", stderr: null });
@@ -143,7 +143,11 @@ describe("settings.updateServer", () => {
 
 		expect(mockSpawnAsync).toHaveBeenCalledWith(
 			"docker",
-			expect.arrayContaining(["service", "update", "dokploy/dokploy:v9.9.9"]),
+			expect.arrayContaining([
+				"service",
+				"update",
+				"ghcr.io/daviddaytw/dokploy:custom",
+			]),
 		);
 	});
 });
